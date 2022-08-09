@@ -22,10 +22,18 @@ DB_USER=""
 
 To run this file, please make sure that the nodejs is already avaiable in pc.
 
-commands to run the code
-
+First, install all the necessary packages required for this project using below command
 ```shell
 npm install
-
-npm start
 ```
+
+After successful installation, run the project using below command
+```shell
+    npm start
+```
+
+If above command dosen't work, use another command
+```shell
+    npm run dev
+```
+
