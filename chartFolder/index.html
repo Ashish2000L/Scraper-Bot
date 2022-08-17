@@ -1,0 +1,244 @@
+<html>
+    <head>
+      <script src="https://cdn.anychart.com/releases/v8/js/anychart-base.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/v8/js/anychart-ui.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/v8/js/anychart-exports.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/v8/js/anychart-stock.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/v8/js/anychart-data-adapter.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/v8/themes/dark_blue.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/8.11.0/themes/dark_turquoise.min.js"></script>
+      <script src="https://cdn.anychart.com/releases/8.11.0/themes/dark_earth.min.js"></script>
+      <link href="https://cdn.anychart.com/releases/v8/css/anychart-ui.min.css" type="text/css" rel="stylesheet">
+      <link href="https://cdn.anychart.com/releases/v8/fonts/css/anychart-font.min.css" type="text/css" rel="stylesheet">
+      <style type="text/css">
+    
+        html,
+        body,
+        #container {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+        }
+      
+    </style>
+    </head>
+    <body>
+      
+      <div id="container"></div>
+      
+    
+      <script>
+
+        anychart.onDocumentReady(function () {
+        // set chart theme
+        var url = new URL(location.href);
+        var ticker = url.searchParams.get("ticker");
+        // var logo = url.searchParams.get("logo");
+        var ma = url.searchParams.get("macd");
+        var sma = url.searchParams.getAll("sma");
+        var ema = url.searchParams.getAll("ema");
+        
+        if(ma === null || ma<5)
+          ma = 5;
+
+        if(ticker === null)
+        { ticker = "AMZN";}
+        
+        // if(logo === null)
+        // logo = "logo1.png"
+
+        var checkArray = [...ema, ...sma]
+        checkArray.push(Number.parseInt(ma,10)+4);
+        checkArray= checkArray.map(Number)
+        var max = Math.max(...checkArray);
+        var min = Math.min(...checkArray);
+
+        function calcWorkingDays(fromDate, days,sub=false) {
+          var count = 0;
+          while (count < days) {
+            if(!sub)
+            {fromDate.setDate(fromDate.getDate() + 1);}
+            else{
+              fromDate.setDate(fromDate.getDate() - 1);
+            }
+
+              if (fromDate.getDay() != 0 && fromDate.getDay() != 6)
+                count++;
+              }
+          return fromDate;
+        }
+
+        function getRandomColor() {
+          var letters = '0123456789ABCDEF';
+          var color = '#';
+          for (var i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+          }
+          return color;
+        }
+        function pad(n){return n<10 ? '0'+n : n}
+
+        function formatDateTime(dateTime)
+        {
+          return (dateTime.getFullYear()+"-"+pad(dateTime.getMonth())+"-"+pad(dateTime.getDate()));
+        }
+
+        var currentDate = new Date()
+        var currentLocalDate = formatDateTime(currentDate)
+        var startDate = new Date();
+        startDate.setFullYear(currentDate.getFullYear()-1);
+        var newDate = new Date(startDate.getFullYear(),startDate.getMonth(),1);
+        var dateMargin = formatDateTime(calcWorkingDays(newDate,max,true))
+
+          // anychart.theme('darkEarth');
+          anychart.data.loadJsonFile(
+            `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${dateMargin}/${currentLocalDate}?apiKey=xpTKchUcmwk3mfcktB4i0SUIdpFPrJGb`,
+              function (data) {
+              
+                var dataTable = anychart.data.table(6, 'dd-MMM-yyyy');
+
+                var history = data.results;
+                result = [];                
+                for(var i =0; i<history.length; i++)
+                {
+                    result.push(Object.values(history[i]));                     
+                }
+
+                dataTable.addData(result);         
+
+                var newMap = dataTable.mapAs({
+                  x:6,                
+                  open: 2,
+                  high: 4,
+                  low: 5,
+                  close: 3            
+                });    
+                
+    
+                var chart = anychart.stock();
+                chart.padding().right(60).bottom(15).left(10);
+
+                var plot = chart.plot(0);
+
+                //configuration of the unit scale for x-axis on chart
+                var xscale = chart.xScale();
+        		    xscale.ticksCount(100)
+        		    xscale.ticks([{
+                minor: {
+                    unit: "hour",
+                    count: 1
+                },
+                major: {
+                    unit: "month",
+                    count: 1
+                }
+            }]);
+
+                //to set the background image to the back of the chart
+                // var area = plot.dataArea()
+                // area.background().enabled(false);
+                // area.background().fill({
+                //   src : "/"+logo,
+                //   mode : "fit",
+                //   opacity : 0.4
+                // })
+              
+                
+                plot.yGrid(false).xGrid(true).yMinorGrid(true).xMinorGrid(false);
+                plot.yAxis().labels(true).minorLabels(true);
+                plot.xAxis().labels(true).minorLabels(false);
+                plot.xAxis().labels().fontSize(12);
+                plot.xAxis().labels().padding({top:7,bottom:7});
+                plot.yAxis().minorTicks({stroke: '2 #aaaaaa', length: 5});
+
+                //formatting x-Axis labels
+                plot.xAxis().labels().format(function(){
+                  var value = new Date(this.dataValue)
+                  if(value.getMonth()==0)
+                  {
+                    return value.toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short' 
+                    }).replace(/ /g, ' ');
+                  }else{
+                    return value.toLocaleDateString('en-US', {month: 'short' }).replace(/ /g, ' ');
+                  }
+                })
+
+              
+                plot.yAxis().orientation("right");
+                const h = anychart.palettes.distinctColors();
+                h.items(["green", "red"]);
+
+                // creating candlestick plot
+                var series = plot.candlestick(newMap);
+                series.legendItem().iconType('rising-falling');
+                series.name(ticker).zIndex(50),
+                series.risingFill(h.itemAt(0), .5).fallingFill(h.itemAt(1), .5).risingStroke(h.itemAt(0), .5).fallingStroke(h.itemAt(1), .5);              
+
+                // SMA technical chart
+                sma.forEach(element => {
+                  var sma50 = plot.sma(newMap, element).series();
+                  sma50.name(`SMA(${element})`).stroke(getRandomColor());  
+                });
+                
+                //EMA technical chart
+                ema.forEach(element=>{
+                  var ema50 = plot.ema(newMap, element).series();
+                  ema50.stroke(getRandomColor());
+                })
+                
+                //date mapping for volume
+                var valueMapping = dataTable.mapAs({'value': 0}); 
+
+                //creating second plot for MACD
+                var secondPlot = chart.plot(1);
+                secondPlot.height('25%');  
+                secondPlot.yAxis(1).orientation('right'); 
+                secondPlot.xAxis().labels(false).minorLabels(false);
+                
+                //plotting volume bar graph on candle-stick chart
+                var volumePlot = plot.column(valueMapping);
+                volumePlot.name("volume").zIndex(100).maxHeight("20%").bottom(0);
+                volumePlot.legendItem({
+                    iconEnabled: !1,
+                    textOverflow: ""
+                });              
+                const logScale = anychart.scales.log();
+                volumePlot.yScale(logScale);
+                volumePlot.risingFill(h.itemAt(0), .5).fallingFill(h.itemAt(1), .5).risingStroke(h.itemAt(0), .5).fallingStroke(h.itemAt(1), .5);              
+
+                // create MACD indicator with fast period 12, slow period 26 and signal period 9
+                var macd = secondPlot.macd(newMap, Number.parseInt(ma,10), 5, 5);
+                macd.macdSeries().stroke('#bf360c');
+                macd.signalSeries().stroke('#ff6d00');
+                macd.histogramSeries("area");
+
+                macd.histogramSeries().normal().fill('green .3').stroke('green');
+
+                macd.histogramSeries().normal().negativeFill('red .3').negativeStroke('red');
+
+                var tooltip = chart.tooltip();
+                tooltip.titleFormat(function () {
+                  return anychart.format.dateTime(this.x)
+                });
+              
+                chart.scroller().enabled(false);
+    
+                chart.container('container');
+
+                chart.draw();
+                
+                var scale = chart.xScale();
+                var date = new Date(scale.getMinimum())
+                calcWorkingDays(date, max);
+                chart.selectRange(date)
+            
+            }
+          );
+        });
+      
+    </script>
+    </body>
+    </html>
+                    
